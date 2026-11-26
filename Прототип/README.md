@@ -37,6 +37,8 @@ java -jar target/store-inventory.jar
 
 | Метод и путь | Параметры |
 | --- | --- |
+| `GET /api/stores` | Список магазинов |
+| `GET /api/stores/{storeId}/assortment` | Ассортимент и цены выбранного магазина |
 | `POST /api/stores/{storeId}/sales` | JSON с датой `date` и корзиной `items`, где ключ — SKU, значение — количество |
 | `GET /api/stores/{storeId}/expiry-alerts` | Дата `date` и горизонт `days` (по умолчанию 2) |
 | `GET /api/stores/{storeId}/replenishment` | Дата `date` |

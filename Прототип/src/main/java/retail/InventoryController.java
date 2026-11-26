@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/stores/{storeId}")
+@RequestMapping("/api/stores")
 class InventoryController {
     private final InventoryService inventory;
 
@@ -36,21 +36,31 @@ class InventoryController {
     record SaleRequest(@NotNull LocalDate date,
                        @NotEmpty Map<@NotBlank String, @NotNull @Positive Integer> items) {}
 
-    @PostMapping("/sales")
+    @GetMapping
+    List<InventoryService.Store> stores() {
+        return inventory.stores();
+    }
+
+    @GetMapping("/{storeId}/assortment")
+    List<InventoryService.Product> assortment(@PathVariable @Positive long storeId) {
+        return inventory.assortment(storeId);
+    }
+
+    @PostMapping("/{storeId}/sales")
     @ResponseStatus(HttpStatus.CREATED)
     InventoryService.Sale sell(@PathVariable @Positive long storeId,
                                @Valid @RequestBody SaleRequest request) {
         return inventory.sell(storeId, request.date(), request.items());
     }
 
-    @GetMapping("/expiry-alerts")
+    @GetMapping("/{storeId}/expiry-alerts")
     List<InventoryService.Alert> alerts(@PathVariable @Positive long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "2") @PositiveOrZero int days) {
         return inventory.alerts(storeId, date, days);
     }
 
-    @GetMapping("/replenishment")
+    @GetMapping("/{storeId}/replenishment")
     List<InventoryService.Recommendation> replenishment(@PathVariable @Positive long storeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return inventory.replenishment(storeId, date);

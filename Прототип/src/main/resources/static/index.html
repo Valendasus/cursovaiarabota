@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Учёт товаров · Магазин у дома</title>
+  <link rel="stylesheet" href="/inventory.css">
+  <script src="/inventory.js" defer></script>
+</head>
+<body>
+  <main>
+    <header class="page-heading">
+      <h1>Учёт товаров</h1>
+      <p>Магазины у дома</p>
+    </header>
+
+    <form id="context" class="toolbar">
+      <label>Магазин <select id="store" required aria-label="Магазин" disabled></select></label>
+      <label>Дата операции <input id="date" type="date" value="2026-11-26" min="0001-01-01" max="9999-12-31" required></label>
+    </form>
+    <p id="notice" class="notice" role="status" hidden></p>
+
+    <nav class="tabs" aria-label="Операции">
+      <button data-panel="sale" aria-current="page">Продажа</button>
+      <button data-panel="expiry">Сроки годности</button>
+      <button data-panel="supply">Пополнение</button>
+    </nav>
+
+    <section id="sale" class="panel" aria-labelledby="sale-title">
+      <h2 id="sale-title">Корзина</h2>
+      <form id="basket">
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">Товар</th><th scope="col">Цена, ₽</th><th scope="col">Количество, шт.</th></tr></thead>
+            <tbody id="products"></tbody>
+          </table>
+        </div>
+        <div class="actions"><button id="submit-sale" type="submit" disabled>Провести продажу</button></div>
+      </form>
+      <div id="receipt" class="receipt" hidden>
+        <h3 id="receipt-title">Продажа</h3>
+        <p id="receipt-total"></p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">Товар</th><th scope="col">Партия</th><th scope="col">Списано, шт.</th></tr></thead>
+            <tbody id="allocations"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="expiry" class="panel" aria-labelledby="expiry-title" hidden>
+      <header class="panel-heading">
+        <h2 id="expiry-title">Контроль сроков годности</h2>
+        <form id="expiry-form" class="expiry-controls">
+          <label>Горизонт, дней <input id="days" type="number" min="0" max="2147483647" value="2" required></label>
+          <button type="submit">Проверить</button>
+        </form>
+      </header>
+      <div class="scroll">
+        <table>
+          <thead><tr><th scope="col">Партия</th><th scope="col">Товар</th><th scope="col">Дата окончания</th><th scope="col">Остаток, шт.</th><th scope="col">Статус</th></tr></thead>
+          <tbody id="alerts"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="supply" class="panel" aria-labelledby="supply-title" hidden>
+      <header class="panel-heading">
+        <h2 id="supply-title">Рекомендации по пополнению</h2>
+        <button id="calculate" type="button">Рассчитать</button>
+      </header>
+      <div class="scroll">
+        <table>
+          <thead><tr><th scope="col">Товар</th><th scope="col">Годно, шт.</th><th scope="col">В пути, шт.</th><th scope="col">К заказу, шт.</th></tr></thead>
+          <tbody id="recommendations"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

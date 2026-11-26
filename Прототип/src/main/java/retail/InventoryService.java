@@ -23,6 +23,8 @@ class InventoryService {
         this.named = new NamedParameterJdbcTemplate(jdbc);
     }
 
+    record Store(long id, String name) {}
+    record Product(String sku, String name, long priceKopecks) {}
     record Batch(long id, long available) {}
     record Allocation(long batchId, String sku, int quantity, long priceKopecks) {}
     record Sale(long saleId, BigInteger totalKopecks, List<Allocation> allocations) {}
@@ -39,6 +41,21 @@ class InventoryService {
         SaleRejected(String reason) {
             super(reason);
         }
+    }
+
+    public List<Store> stores() {
+        return jdbc.query("SELECT id, name FROM store ORDER BY id",
+                (row, index) -> new Store(row.getLong("id"), row.getString("name")));
+    }
+
+    public List<Product> assortment(long storeId) {
+        requireStore(storeId);
+        return jdbc.query("""
+                SELECT p.sku, p.name, a.price_kopecks
+                FROM assortment a JOIN product p ON p.sku = a.sku
+                WHERE a.store_id = ? ORDER BY p.name, p.sku
+                """, (row, index) -> new Product(row.getString("sku"), row.getString("name"),
+                row.getLong("price_kopecks")), storeId);
     }
 
     @Transactional

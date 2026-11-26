@@ -67,6 +67,22 @@ class InventoryHttpTest {
     }
 
     @Test
+    void catalogueShowsEachStoreAndItsOwnAssortment() throws Exception {
+        var stores = send(get("/api/stores"));
+        assertThat(stores.statusCode()).isEqualTo(200);
+        assertThat(mapper.readTree(stores.body()).size()).isEqualTo(2);
+
+        var assortment = send(get("/api/stores/2/assortment"));
+        assertThat(assortment.statusCode()).isEqualTo(200);
+        var products = mapper.readTree(assortment.body());
+        assertThat(products.size()).isEqualTo(1);
+        assertThat(products.get(0).path("sku").asText()).isEqualTo("MILK");
+        assertThat(products.get(0).path("priceKopecks").asInt()).isEqualTo(9200);
+        assertThat(send(get("/api/stores/555/assortment")).statusCode()).isEqualTo(404);
+        assertThat(send(get("/")).body()).contains("Учёт товаров");
+    }
+
+    @Test
     void saleAllocatesFefoAndUpdatesPlanning() throws Exception {
         var response = send(sale(BASE, "{\"MILK\":5,\"BREAD\":1}"));
         assertThat(response.statusCode()).isEqualTo(201);
