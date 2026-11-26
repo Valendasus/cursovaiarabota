@@ -6,6 +6,10 @@ const products = byId("products");
 const submit = byId("submit-sale");
 const receipt = byId("receipt");
 const controls = [...document.querySelectorAll(".tabs button")];
+const reports = {
+  expiry: { body: byId("alerts"), columns: 5, loading: "Загрузка предупреждений…" },
+  supply: { body: byId("recommendations"), columns: 4, loading: "Загрузка рекомендаций…" }
+};
 const money = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" });
 const dateLabel = value => value.split("-").reverse().join(".");
 let active = "sale";
@@ -78,48 +82,63 @@ function switchPanel(panel) {
     else button.removeAttribute("aria-current");
     byId(button.dataset.panel).hidden = !selected;
   }
-  if (panel !== "sale") refresh(false);
+  refresh();
 }
 
-async function refresh(reloadCatalog) {
+async function refresh() {
   loading?.abort();
   const controller = new AbortController();
   loading = controller;
-  if (!store.value) return;
+  const storeId = store.value;
+  if (!storeId) return;
+  const panel = active;
+  const report = reports[panel];
   showNotice("");
-  const base = "/api/stores/" + store.value;
+  const base = "/api/stores/" + storeId;
   const query = new URLSearchParams({ date: date.value });
   const options = { signal: controller.signal };
+  if (report) writeRows(report.body, [], report.columns, report.loading);
   try {
-    if (reloadCatalog || catalogStore !== store.value) {
+    if (catalogStore !== storeId) {
       catalog = [];
       submit.disabled = true;
       writeRows(products, [], 3, "Загрузка ассортимента…");
-      catalog = await request(base + "/assortment", options);
-      catalogStore = store.value;
+      const assortment = await request(base + "/assortment", options);
+      if (controller.signal.aborted) return;
+      catalog = assortment;
+      catalogStore = storeId;
       setProducts();
     }
-    if (active !== "sale" && !date.reportValidity()) return;
-    if (active === "expiry") {
-      writeRows(byId("alerts"), [], 5, "Загрузка предупреждений…");
-      if (!days.reportValidity()) return;
+    if (!report) return;
+    if (!date.reportValidity()) {
+      writeRows(report.body, [], report.columns, "Укажите дату операции");
+      return;
+    }
+    if (panel === "expiry") {
+      if (!days.reportValidity()) {
+        writeRows(report.body, [], report.columns, "Укажите горизонт проверки");
+        return;
+      }
       query.set("days", days.value);
       const rows = await request(base + "/expiry-alerts?" + query, options);
-      writeRows(byId("alerts"), rows.map(row => {
+      if (controller.signal.aborted) return;
+      writeRows(report.body, rows.map(row => {
         const status = document.createElement("span");
         status.className = row.status === "EXPIRED" ? "expired" : "expiring";
         status.textContent = row.status === "EXPIRED" ? "Срок истёк" : "Срок заканчивается";
         return [row.batchId, nameOf(row.sku), dateLabel(row.expiresOn), row.quantity, status];
-      }), 5, "По выбранной дате предупреждений нет");
-    }
-    if (active === "supply") {
-      writeRows(byId("recommendations"), [], 4, "Загрузка рекомендаций…");
+      }), report.columns, "По выбранной дате предупреждений нет");
+    } else {
       const rows = await request(base + "/replenishment?" + query, options);
-      writeRows(byId("recommendations"), rows.map(row =>
-        [nameOf(row.sku), row.available, row.expected, row.quantity]), 4, "Пополнение не требуется");
+      if (controller.signal.aborted) return;
+      writeRows(report.body, rows.map(row =>
+        [nameOf(row.sku), row.available, row.expected, row.quantity]), report.columns, "Пополнение не требуется");
     }
   } catch (error) {
-    if (error.name !== "AbortError") showNotice(error.message);
+    if (controller.signal.aborted) return;
+    if (catalogStore !== storeId) writeRows(products, [], 3, "Не удалось загрузить ассортимент");
+    if (report) writeRows(report.body, [], report.columns, "Не удалось загрузить данные");
+    showNotice(error.message);
   }
 }
 
@@ -132,18 +151,22 @@ async function initialize() {
     }
     store.replaceChildren(...stores.map(item => new Option(item.name, item.id)));
     store.disabled = false;
-    await refresh(true);
+    await refresh();
   } catch (error) {
     showNotice(error.message);
   }
 }
 
 byId("context").addEventListener("submit", event => event.preventDefault());
-store.addEventListener("change", () => { receipt.hidden = true; refresh(true); });
-date.addEventListener("change", () => { receipt.hidden = true; refresh(false); });
+store.addEventListener("change", () => {
+  receipt.hidden = true;
+  catalogStore = "";
+  refresh();
+});
+date.addEventListener("change", () => { receipt.hidden = true; refresh(); });
 for (const button of controls) button.addEventListener("click", () => switchPanel(button.dataset.panel));
-byId("expiry-form").addEventListener("submit", event => { event.preventDefault(); refresh(false); });
-byId("calculate").addEventListener("click", () => refresh(false));
+byId("expiry-form").addEventListener("submit", event => { event.preventDefault(); refresh(); });
+byId("calculate").addEventListener("click", refresh);
 
 byId("basket").addEventListener("submit", async event => {
   event.preventDefault();
