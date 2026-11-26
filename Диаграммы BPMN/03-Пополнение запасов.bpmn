@@ -1,0 +1,203 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Store" targetNamespace="https://github.com/Valendasus/cursovaiarabota/bpmn">
+  <bpmn:process id="Process_Store" name="Пополнение запасов магазина" isExecutable="false">
+    <bpmn:documentation>По каждому SKU система объединяет годный остаток и подтверждённые поступления. При позиции запаса не выше порога рассчитывается количество до целевого запаса. Сотрудник принимает решение о заявке. Оформление заявки выполняет сотрудник магазина.</bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_Store">
+      <bpmn:lane id="Lane_System" name="Информационная система">
+        <bpmn:flowNodeRef>Start_Request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sum</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Position</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Reorder</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_NoOrder</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Recommend</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Employee" name="Сотрудник магазина">
+        <bpmn:flowNodeRef>Task_Review</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Declined</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Order</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Submitted</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Request" name="Запрошен расчёт пополнения">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_Sum" name="Суммировать остатки и ожидаемые поставки">
+      <bpmn:documentation>Учитываются годные партии и поступления со статусом CONFIRMED.</bpmn:documentation>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Position" name="Рассчитать позицию запаса по SKU">
+      <bpmn:documentation>Позиция запаса равна сумме годного остатка и подтверждённого количества в пути.</bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_Reorder" name="Есть SKU на пороге или ниже?" default="Flow_4n" gatewayDirection="Diverging">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4n</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4y</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_NoOrder" name="Пополнение не требуется">
+      <bpmn:incoming>Flow_4n</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Task_Recommend" name="Рассчитать количество к пополнению">
+      <bpmn:documentation>Рекомендация равна целевому запасу за вычетом позиции запаса.</bpmn:documentation>
+      <bpmn:incoming>Flow_4y</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_Review" name="Проверить рекомендации">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_Approved" name="Заявка одобрена?" default="Flow_8n" gatewayDirection="Diverging">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_8n</bpmn:outgoing>
+      <bpmn:outgoing>Flow_8y</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Declined" name="Заявка отклонена">
+      <bpmn:incoming>Flow_8n</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="Task_Order" name="Оформить заявку">
+      <bpmn:incoming>Flow_8y</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Submitted" name="Заявка оформлена">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Request" targetRef="Task_Sum" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Sum" targetRef="Task_Position" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Position" targetRef="Gateway_Reorder" />
+    <bpmn:sequenceFlow id="Flow_4n" sourceRef="Gateway_Reorder" targetRef="End_NoOrder" name="Нет" />
+    <bpmn:sequenceFlow id="Flow_4y" sourceRef="Gateway_Reorder" targetRef="Task_Recommend" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Есть позиция запаса не выше порога</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Recommend" targetRef="Task_Review" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Review" targetRef="Gateway_Approved" />
+    <bpmn:sequenceFlow id="Flow_8n" sourceRef="Gateway_Approved" targetRef="End_Declined" name="Нет" />
+    <bpmn:sequenceFlow id="Flow_8y" sourceRef="Gateway_Approved" targetRef="Task_Order" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Сотрудник подтвердил рекомендацию</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_Order" targetRef="End_Submitted" />
+  </bpmn:process>
+  <bpmn:collaboration id="Collaboration_Store">
+    <bpmn:participant id="Participant_Store" name="Магазин у дома" processRef="Process_Store" />
+  </bpmn:collaboration>
+  <bpmndi:BPMNDiagram id="Diagram_Store" name="Пополнение запасов магазина">
+    <bpmndi:BPMNPlane id="Plane_Store" bpmnElement="Collaboration_Store">
+      <bpmndi:BPMNShape id="Participant_Store_di" bpmnElement="Participant_Store" isHorizontal="true">
+        <dc:Bounds x="95" y="115" width="1855" height="472" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true">
+        <dc:Bounds x="125" y="115" width="1825" height="206" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Employee_di" bpmnElement="Lane_Employee" isHorizontal="true">
+        <dc:Bounds x="125" y="321" width="1825" height="266" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Request_di" bpmnElement="Start_Request">
+        <dc:Bounds x="180" y="217" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="136" y="258" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Sum_di" bpmnElement="Task_Sum">
+        <dc:Bounds x="317" y="198" width="176" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Position_di" bpmnElement="Task_Position">
+        <dc:Bounds x="562" y="198" width="174" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Reorder_di" bpmnElement="Gateway_Reorder" isMarkerVisible="true">
+        <dc:Bounds x="849" y="210" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="793" y="274" width="165" height="34" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_NoOrder_di" bpmnElement="End_NoOrder">
+        <dc:Bounds x="952" y="136" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="899" y="177" width="142" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Recommend_di" bpmnElement="Task_Recommend">
+        <dc:Bounds x="1043" y="198" width="174" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Review_di" bpmnElement="Task_Review">
+        <dc:Bounds x="1201" y="376" width="158" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Approved_di" bpmnElement="Gateway_Approved" isMarkerVisible="true">
+        <dc:Bounds x="1455" y="388" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1405" y="371" width="150" height="26" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Declined_di" bpmnElement="End_Declined">
+        <dc:Bounds x="1462" y="506" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1418" y="547" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Order_di" bpmnElement="Task_Order">
+        <dc:Bounds x="1619" y="376" width="148" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Submitted_di" bpmnElement="End_Submitted">
+        <dc:Bounds x="1864" y="395" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1820" y="436" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="216" y="235" />
+        <di:waypoint x="317" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="493" y="235" />
+        <di:waypoint x="562" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="736" y="235" />
+        <di:waypoint x="849" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4n_di" bpmnElement="Flow_4n">
+        <di:waypoint x="874" y="210" />
+        <di:waypoint x="874" y="154" />
+        <di:waypoint x="952" y="154" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="905" y="130" width="27" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4y_di" bpmnElement="Flow_4y">
+        <di:waypoint x="899" y="235" />
+        <di:waypoint x="1043" y="235" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="949" y="211" width="24" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1217" y="235" />
+        <di:waypoint x="1280" y="235" />
+        <di:waypoint x="1280" y="376" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1359" y="413" />
+        <di:waypoint x="1455" y="413" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8n_di" bpmnElement="Flow_8n">
+        <di:waypoint x="1480" y="438" />
+        <di:waypoint x="1480" y="506" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1438" y="466" width="30" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8y_di" bpmnElement="Flow_8y">
+        <di:waypoint x="1505" y="413" />
+        <di:waypoint x="1619" y="413" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1556" y="388" width="24" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1767" y="413" />
+        <di:waypoint x="1864" y="413" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

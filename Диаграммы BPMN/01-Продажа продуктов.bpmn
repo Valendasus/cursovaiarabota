@@ -1,0 +1,162 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Store" targetNamespace="https://github.com/Valendasus/cursovaiarabota/bpmn">
+  <bpmn:process id="Process_Store" name="Розничная продажа продуктов" isExecutable="false">
+    <bpmn:documentation>Кассир передаёт состав корзины. Система подбирает партии с положительным остатком и датой окончания годности позже даты операции, затем фиксирует продажу и изменение остатков в одной транзакции. Модель соответствует рисунку 1 отчёта.</bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_Store">
+      <bpmn:lane id="Lane_Cashier" name="Кассир">
+        <bpmn:flowNodeRef>Start_Cart</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Input</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Reject</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Rejected</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_HandOver</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Finished</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="Информационная система">
+        <bpmn:flowNodeRef>Task_Check</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Available</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Save</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Cart" name="Корзина передана кассиру">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_Input" name="Ввести позиции корзины">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_Check" name="Проверить наличие годных партий">
+      <bpmn:documentation>Для каждого SKU выбираются партии данного магазина. Сортировка по дате окончания годности и идентификатору обеспечивает порядок FEFO.</bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_Available" name="Вся корзина доступна?" default="Flow_4n" gatewayDirection="Diverging">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4n</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4y</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_Reject" name="Сообщить о нехватке">
+      <bpmn:incoming>Flow_4n</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Rejected" name="Продажа отклонена">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Task_Save" name="Сохранить продажу и уменьшить остатки">
+      <bpmn:documentation>Запись продажи и распределений по партиям фиксируется вместе с уменьшением остатков. При ошибке записи транзакция откатывается.</bpmn:documentation>
+      <bpmn:incoming>Flow_4y</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_HandOver" name="Выдать товар и чек">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Finished" name="Продажа завершена">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Cart" targetRef="Task_Input" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Input" targetRef="Task_Check" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Check" targetRef="Gateway_Available" />
+    <bpmn:sequenceFlow id="Flow_4n" sourceRef="Gateway_Available" targetRef="Task_Reject" name="Нет" />
+    <bpmn:sequenceFlow id="Flow_4y" sourceRef="Gateway_Available" targetRef="Task_Save" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Годный остаток покрывает все позиции корзины</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Reject" targetRef="End_Rejected" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Save" targetRef="Task_HandOver" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_HandOver" targetRef="End_Finished" />
+  </bpmn:process>
+  <bpmn:collaboration id="Collaboration_Store">
+    <bpmn:participant id="Participant_Store" name="Магазин у дома" processRef="Process_Store" />
+  </bpmn:collaboration>
+  <bpmndi:BPMNDiagram id="Diagram_Store" name="Розничная продажа продуктов">
+    <bpmndi:BPMNPlane id="Plane_Store" bpmnElement="Collaboration_Store">
+      <bpmndi:BPMNShape id="Participant_Store_di" bpmnElement="Participant_Store" isHorizontal="true">
+        <dc:Bounds x="95" y="115" width="1455" height="420" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Cashier_di" bpmnElement="Lane_Cashier" isHorizontal="true">
+        <dc:Bounds x="125" y="115" width="1425" height="178" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true">
+        <dc:Bounds x="125" y="293" width="1425" height="242" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Cart_di" bpmnElement="Start_Cart">
+        <dc:Bounds x="182" y="183" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="138" y="224" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Input_di" bpmnElement="Task_Input">
+        <dc:Bounds x="312" y="164" width="156" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Check_di" bpmnElement="Task_Check">
+        <dc:Bounds x="498" y="351" width="172" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Available_di" bpmnElement="Gateway_Available" isMarkerVisible="true">
+        <dc:Bounds x="780" y="363" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="723" y="427" width="165" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reject_di" bpmnElement="Task_Reject">
+        <dc:Bounds x="729" y="164" width="153" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected_di" bpmnElement="End_Rejected">
+        <dc:Bounds x="992" y="183" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="948" y="224" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Save_di" bpmnElement="Task_Save">
+        <dc:Bounds x="966" y="351" width="180" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandOver_di" bpmnElement="Task_HandOver">
+        <dc:Bounds x="1207" y="164" width="146" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Finished_di" bpmnElement="End_Finished">
+        <dc:Bounds x="1442" y="183" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1398" y="224" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="218" y="201" />
+        <di:waypoint x="312" y="201" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="390" y="238" />
+        <di:waypoint x="390" y="388" />
+        <di:waypoint x="498" y="388" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="670" y="388" />
+        <di:waypoint x="780" y="388" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4n_di" bpmnElement="Flow_4n">
+        <di:waypoint x="805" y="363" />
+        <di:waypoint x="805" y="238" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="768" y="311" width="29" height="22" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4y_di" bpmnElement="Flow_4y">
+        <di:waypoint x="830" y="388" />
+        <di:waypoint x="966" y="388" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="876" y="360" width="27" height="22" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="881" y="201" />
+        <di:waypoint x="992" y="201" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1146" y="388" />
+        <di:waypoint x="1280" y="388" />
+        <di:waypoint x="1280" y="238" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1353" y="201" />
+        <di:waypoint x="1442" y="201" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

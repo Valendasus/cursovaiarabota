@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Store" targetNamespace="https://github.com/Valendasus/cursovaiarabota/bpmn">
+  <bpmn:process id="Process_Store" name="Контроль сроков годности" isExecutable="false">
+    <bpmn:documentation>Система ищет партии магазина с положительным остатком и датой окончания не позднее даты проверки плюс горизонт. Сотрудник сверяет наличие и снимает просроченные продукты.</bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_Store">
+      <bpmn:lane id="Lane_System" name="Информационная система">
+        <bpmn:flowNodeRef>Start_Check</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Select</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Classify</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_HasAlerts</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_NoAlerts</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Employee" name="Сотрудник магазина">
+        <bpmn:flowNodeRef>Task_Inspect</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Inspected</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Check" name="Проверка по графику">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="Timer_Daily">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">R/P1D</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_Select" name="Отобрать партии до границы проверки">
+      <bpmn:documentation>Нулевые остатки исключаются. Граница равна дате проверки плюс заданный горизонт.</bpmn:documentation>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Task_Classify" name="Присвоить партиям статусы по сроку">
+      <bpmn:documentation>Если дата окончания не позже даты проверки, статус EXPIRED. Для остальных найденных партий — EXPIRING.</bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_HasAlerts" name="Есть предупреждения?" default="Flow_4n" gatewayDirection="Diverging">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4n</bpmn:outgoing>
+      <bpmn:outgoing>Flow_4y</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_NoAlerts" name="Предупреждений нет">
+      <bpmn:incoming>Flow_4n</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="Task_Inspect" name="Сверить партии и снять просроченные товары">
+      <bpmn:incoming>Flow_4y</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Inspected" name="Проверка завершена">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Check" targetRef="Task_Select" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Select" targetRef="Task_Classify" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Classify" targetRef="Gateway_HasAlerts" />
+    <bpmn:sequenceFlow id="Flow_4n" sourceRef="Gateway_HasAlerts" targetRef="End_NoAlerts" name="Нет" />
+    <bpmn:sequenceFlow id="Flow_4y" sourceRef="Gateway_HasAlerts" targetRef="Task_Inspect" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">Список содержит хотя бы одну партию</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Inspect" targetRef="End_Inspected" />
+  </bpmn:process>
+  <bpmn:collaboration id="Collaboration_Store">
+    <bpmn:participant id="Participant_Store" name="Магазин у дома" processRef="Process_Store" />
+  </bpmn:collaboration>
+  <bpmndi:BPMNDiagram id="Diagram_Store" name="Контроль сроков годности">
+    <bpmndi:BPMNPlane id="Plane_Store" bpmnElement="Collaboration_Store">
+      <bpmndi:BPMNShape id="Participant_Store_di" bpmnElement="Participant_Store" isHorizontal="true">
+        <dc:Bounds x="95" y="115" width="1330" height="415" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true">
+        <dc:Bounds x="125" y="115" width="1300" height="184" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Employee_di" bpmnElement="Lane_Employee" isHorizontal="true">
+        <dc:Bounds x="125" y="299" width="1300" height="231" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Check_di" bpmnElement="Start_Check">
+        <dc:Bounds x="227" y="177" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="183" y="218" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Select_di" bpmnElement="Task_Select">
+        <dc:Bounds x="335" y="158" width="172" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Classify_di" bpmnElement="Task_Classify">
+        <dc:Bounds x="574" y="158" width="174" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HasAlerts_di" bpmnElement="Gateway_HasAlerts" isMarkerVisible="true">
+        <dc:Bounds x="873" y="170" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="724" y="240" width="145" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_NoAlerts_di" bpmnElement="End_NoAlerts">
+        <dc:Bounds x="1172" y="177" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1115" y="218" width="150" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Inspect_di" bpmnElement="Task_Inspect">
+        <dc:Bounds x="997" y="360" width="186" height="74" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Inspected_di" bpmnElement="End_Inspected">
+        <dc:Bounds x="1317" y="379" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1273" y="420" width="125" height="31" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="263" y="195" />
+        <di:waypoint x="335" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="507" y="195" />
+        <di:waypoint x="574" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="748" y="195" />
+        <di:waypoint x="873" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4n_di" bpmnElement="Flow_4n">
+        <di:waypoint x="923" y="195" />
+        <di:waypoint x="1172" y="195" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="996" y="170" width="30" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4y_di" bpmnElement="Flow_4y">
+        <di:waypoint x="898" y="220" />
+        <di:waypoint x="898" y="397" />
+        <di:waypoint x="997" y="397" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="908" y="344" width="25" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1183" y="397" />
+        <di:waypoint x="1317" y="397" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
