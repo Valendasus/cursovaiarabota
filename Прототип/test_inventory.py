@@ -42,6 +42,8 @@ class InventoryTests(unittest.TestCase):
                           (2, "MILK", "2026-11-26", 3, "EXPIRED"),
                           (4, "BREAD", "2026-11-27", 4, "EXPIRING")],
                          expiry_alerts(self.db, 1, DAY, 1))
+        self.assertEqual(expiry_alerts(self.db, 1, date.max, 0),
+                         expiry_alerts(self.db, 1, date.max, 1))
 
     def test_replenishment_includes_confirmed_only(self):
         sell(self.db, 1, {"BREAD": 1, "MILK": 5}, DAY)

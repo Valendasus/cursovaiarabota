@@ -90,7 +90,7 @@ def sell(connection, store_id, basket, day):
 def expiry_alerts(connection, store_id, day, window_days):
     if type(window_days) is not int or window_days < 0:
         raise ValueError("Горизонт должен быть неотрицательным целым")
-    end = day + timedelta(days=window_days)
+    end = day + timedelta(days=min(window_days, (date.max - day).days))
     return connection.execute(
         """SELECT id, sku, expires_on, quantity,
                   CASE WHEN expires_on <= ? THEN 'EXPIRED' ELSE 'EXPIRING' END
