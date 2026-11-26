@@ -1,0 +1,12 @@
+name: retail-practice
+services:
+  inventory:
+    build:
+      context: ./Прототип
+    ports:
+      - "127.0.0.1:${INVENTORY_PORT:-8080}:8080"
+    volumes:
+      - inventory-data:/data
+
+volumes:
+  inventory-data:
