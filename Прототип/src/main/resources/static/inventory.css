@@ -42,7 +42,7 @@ button:disabled { opacity: .48; cursor: default; }
 :focus-visible { outline: 3px solid #9b6115; outline-offset: 3px; }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .tabs button { background: #e5ebe5; color: var(--green); }
-.tabs button:hover:enabled { background: #dce8dc; }
+.tabs button:not([aria-current]):hover:enabled { background: #dce8dc; }
 .tabs button[aria-current] { background: var(--green); color: white; }
 .panel { padding: 21px; }
 .panel-heading, .expiry-controls, .actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
